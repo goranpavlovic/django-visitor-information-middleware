@@ -52,7 +52,7 @@ class TimezoneMiddleware(object):
 
             try:
                 timezone.activate(user_timezone)
-            except Exception, e:
+            except Exception as e:
                 extra = {'_user': request.user, '_timezone': user_timezone}
                 logger.error('Invalid timezone selected: %s' % (str(e)),
                              extra=extra)
@@ -69,7 +69,11 @@ class VisitorInformationMiddleware(object):
         - user.unit_system
         - cookie_notice
     """
-    def process_request(self, request):
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
         ip = request.META['REMOTE_ADDR']
 
         city = None
@@ -104,18 +108,8 @@ class VisitorInformationMiddleware(object):
             'unit_system': unit_system
         }
 
-        if request.user.is_authenticated() and request.user.get_profile():
-            # If user is logged in, add current settings
-            profile = request.user.get_profile()
-            user_timezone = \
-                getattr(profile,
-                        settings.VISITOR_INFO_PROFILE_TIMEZONE_FIELD, None)
-            user_unit_system = \
-                getattr(profile,
-                        settings.VISITOR_INFO_PROFILE_UNIT_SYSTEM_FIELD, None)
-            request.visitor['user'] = {
-                'timezone': user_timezone,
-                'unit_system': user_unit_system
-            }
-
         request.visitor['cookie_notice'] = cookie_notice
+
+        response = self.get_response(request)
+
+        return response
